@@ -1,4 +1,20 @@
 package com.example.sharedkernel.dto;
 
-public class BaseDTO {
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public abstract class BaseDTO {
+    private Long id;
+
+    private String version;
+
+    private Boolean deleted;
+
+    private Boolean active;
 }
