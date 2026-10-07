@@ -51,6 +51,6 @@ public interface UserResponseMapper {
                 .build();
     }
 
-    @Mapping(target = "roles", expression = "java(userDTO.getRoles().stream().map(role -> role.getName()).toList())")
+    @Mapping(target = "roles", expression = "java(userDTO.getRoles() != null ? userDTO.getRoles().stream().map(role -> role.getName()).toList() : java.util.Collections.emptyList())")
     UserLoginResponse toLoginResponse(UserDTO userDTO);
 }
