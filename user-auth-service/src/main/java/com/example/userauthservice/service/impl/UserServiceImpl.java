@@ -2,6 +2,7 @@ package com.example.userauthservice.service.impl;
 
 import com.example.sharedkernel.dto.PageDTO;
 import com.example.sharedkernel.dto.response.PagedResponse;
+import com.example.sharedkernel.security.JwtUtils;
 import com.example.userauthservice.dto.UserDTO;
 import com.example.userauthservice.dto.request.LoginRequest;
 import com.example.userauthservice.dto.request.SignUpRequest;
@@ -24,9 +25,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -37,6 +43,8 @@ public class UserServiceImpl implements UserService {
     private final UserRequestMapper userRequestMapper;
     private final SignUpRequestValidator signUpRequestValidator;
     private final RoleFacade roleFacade;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtils jwtUtils;
 
     @Override
     public PagedResponse<List<UserResponse>> genericSearchAllUsers(String searchTerm,
@@ -153,8 +161,36 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserLoginResponse userLogIn(LoginRequest loginRequest) {
-        UserDTO userDTO = userFacade.getUser(loginRequest.getEmail() != null ? loginRequest.getEmail() : loginRequest.getMobile(), UserIdentifier.valueOf(loginRequest.getSignUpUsing()));
-        return userResponseMapper.toLoginResponse(userDTO);
+        String identifier = (loginRequest.getEmail() != null && !loginRequest.getEmail().isBlank())
+                ? loginRequest.getEmail()
+                : loginRequest.getMobile();
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword())
+        );
+
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String accessToken = jwtUtils.generateToken(userDetails);
+        String refreshToken = jwtUtils.generateRefreshToken(userDetails);
+
+        UserIdentifier userIdentifier = UserIdentifier.valueOf(loginRequest.getSignUpUsing().toUpperCase());
+        UserDTO userDTO = userFacade.getUser(identifier, userIdentifier);
+        UserLoginResponse loginResponse = userResponseMapper.toLoginResponse(userDTO);
+
+        loginResponse.setAccessToken(accessToken);
+        loginResponse.setRefreshToken(refreshToken);
+
+        Date accessExpiry = jwtUtils.extractExpiration(accessToken);
+        Calendar accessCal = Calendar.getInstance();
+        accessCal.setTime(accessExpiry);
+        loginResponse.setExpirationDate(accessCal);
+
+        Date refreshExpiry = jwtUtils.extractExpiration(refreshToken);
+        Calendar refreshCal = Calendar.getInstance();
+        refreshCal.setTime(refreshExpiry);
+        loginResponse.setRefreshTokenExpirationDate(refreshCal);
+
+        return loginResponse;
     }
 
     private PageDTO<List<UserDTO>> searchAllUsers(String searchTerm,

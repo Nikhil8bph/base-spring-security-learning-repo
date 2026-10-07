@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.example")
 @Import(AuditLogConfig.class)
 public class UserAuthServiceApplication {
 
