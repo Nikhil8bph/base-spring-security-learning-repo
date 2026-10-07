@@ -54,4 +54,9 @@ public class RoleFacade {
         role.delete("System");
         roleRepository.save(role);
     }
+
+    public boolean roleExists(String roleName) {
+        var role = roleRepository.findByNameIgnoreCase(roleName);
+        return role.isPresent();
+    }
 }

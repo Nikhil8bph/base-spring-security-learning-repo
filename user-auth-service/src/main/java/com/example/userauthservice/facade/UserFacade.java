@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,10 +21,11 @@ import java.util.List;
 public class UserFacade {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public UserDTO saveUser(UserDTO userDTO, String password) {
         var userEntity = userMapper.toEntity(userDTO);
-        userEntity.setPassword(password);
+        userEntity.setPassword(passwordEncoder.encode(password));
         return userMapper.toDTO(
                 userRepository.save(userEntity)
         );
@@ -31,7 +33,7 @@ public class UserFacade {
 
     public UserDTO updatePassword(Long userId, String password) {
         var userEntity = findUserById(userId);
-        userEntity.setPassword(password);
+        userEntity.setPassword(passwordEncoder.encode(password));
         return userMapper.toDTO(
                 userRepository.save(userEntity)
         );

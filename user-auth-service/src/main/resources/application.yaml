@@ -23,3 +23,17 @@ springdoc:
     path: /swagger-ui.html
     display-request-duration: true
     operations-sorter: alpha
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:your-secret-key-change-in-production}
+    expiration-ms: ${JWT_EXPIRATION:900000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000}
+
+  default-role-name: ${DEFAULT_ROLE_NAME:ADMIN}
+  default-role-description: ${DEFAULT_ROLE_DESCRIPTION:Default user role}
+  default-user: ${DEFAULT_USER:admin}
+  default-email: ${DEFAULT_EMAIL:admin@example.com}
+  default-phone: ${DEFAULT_PHONE:+919876543210}
+  default-password: ${DEFAULT_PASSWORD:admin123}
+  default-role: ${DEFAULT_ROLE:true}
