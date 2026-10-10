@@ -26,7 +26,8 @@ springdoc:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:your-secret-key-change-in-production}
+    # Base64-encoded key (at least 32 decoded bytes). This fallback is for local development only.
+    secret: ${JWT_SECRET:eW91ci1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u}
     expiration-ms: ${JWT_EXPIRATION:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000}
 
@@ -36,4 +37,4 @@ app:
   default-email: ${DEFAULT_EMAIL:admin@example.com}
   default-phone: ${DEFAULT_PHONE:+919876543210}
   default-password: ${DEFAULT_PASSWORD:admin123}
-  default-role: ${DEFAULT_ROLE:true}
+  signup-role-name: ${SIGNUP_ROLE_NAME:USER}

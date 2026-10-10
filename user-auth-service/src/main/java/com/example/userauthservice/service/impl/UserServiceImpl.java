@@ -30,6 +30,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.example.userauthservice.exception.ResourceConflictException;
+import java.util.Locale;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -121,7 +124,7 @@ public class UserServiceImpl implements UserService {
         signUpRequestValidator.validateSignUpRequest(signUpRequest);
         var userDTO = userFacade.userExistsByEmailOrMobile(signUpRequest.getEmail(), signUpRequest.getMobile());
         if (userDTO) {
-            throw new IllegalArgumentException("User already exists with email: %s".formatted(signUpRequest.getEmail()));
+            throw new ResourceConflictException("User already exists with this email or mobile number");
         } else {
             UserDTO user = userRequestMapper.toDTOFromSignUpRequest(signUpRequest);
             var defaultRoles = roleFacade.getDefaultRoles();
@@ -142,6 +145,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @userAuthorization.isOwner(#userId, authentication)")
     public UserResponse updateUser(Long userId, UserUpdateRequest userUpdateRequest) {
         var userDTO = userRequestMapper.toDTOFromUserUpdateRequest(userUpdateRequest);
         var user = userFacade.updateUser(userId, userDTO);
@@ -149,11 +153,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @userAuthorization.isOwner(#userId, authentication)")
     public void deleteUser(Long userId) {
         userFacade.deleteUser(userId);
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @userAuthorization.isOwner(#userId, authentication)")
     public UserResponse updatePassword(Long userId, UpdatePasswordRequest updatePasswordRequest) {
         var userDTO = userFacade.updatePassword(userId, updatePasswordRequest.getPassword());
         return userResponseMapper.toResponse(userDTO);
@@ -161,9 +167,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserLoginResponse userLogIn(LoginRequest loginRequest) {
-        String identifier = (loginRequest.getEmail() != null && !loginRequest.getEmail().isBlank())
-                ? loginRequest.getEmail()
-                : loginRequest.getMobile();
+        UserIdentifier userIdentifier = UserIdentifier.valueOf(loginRequest.getSignUpUsing().toUpperCase(Locale.ROOT));
+        String identifier = userIdentifier == UserIdentifier.EMAIL ? loginRequest.getEmail() : loginRequest.getMobile();
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("The selected login identifier is required");
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword())
@@ -173,7 +181,6 @@ public class UserServiceImpl implements UserService {
         String accessToken = jwtUtils.generateToken(userDetails);
         String refreshToken = jwtUtils.generateRefreshToken(userDetails);
 
-        UserIdentifier userIdentifier = UserIdentifier.valueOf(loginRequest.getSignUpUsing().toUpperCase());
         UserDTO userDTO = userFacade.getUser(identifier, userIdentifier);
         UserLoginResponse loginResponse = userResponseMapper.toLoginResponse(userDTO);
 
@@ -210,9 +217,7 @@ public class UserServiceImpl implements UserService {
                                                   int pageNumber,
                                                   String sortBy,
                                                   String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
         Pageable pageable = PageRequest.of(pageNumber, pageSize, sort);
         var searchTypeEnum = searchType == null || searchType.isBlank()
                 ? null

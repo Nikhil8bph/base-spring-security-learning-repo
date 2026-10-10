@@ -3,6 +3,8 @@ package com.example.userauthservice.security.config;
 
 import com.example.userauthservice.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.DispatcherType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +24,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
@@ -45,9 +48,9 @@ public class WebSecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler())
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/role/**").hasAnyRole("ADMIN", "MODERATOR")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers("/api/v1/roles/**").hasAnyRole("ADMIN", "MODERATOR")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/login").permitAll()
                         .requestMatchers("/api/v1/users/signup").permitAll()
                         .requestMatchers(SWAGGER_URLS).permitAll()
@@ -75,7 +78,7 @@ public class WebSecurityConfig {
         return (request, response, authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.getWriter().write("Unauthorized");
+            response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\",\"data\":null}");
         };
     }
 
@@ -84,7 +87,7 @@ public class WebSecurityConfig {
         return (request, response, accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.getWriter().write("Access Denied");
+            response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\",\"data\":null}");
         };
     }
 }

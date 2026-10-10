@@ -18,8 +18,10 @@ public class UserDetailsImpl implements UserDetails {
     @NullMarked
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return user.getRoles().stream()
+                .filter(role -> Boolean.TRUE.equals(role.getActive()) && !Boolean.TRUE.equals(role.getDeleted()))
                 .map(role -> {
-                    String roleName = role.getName();;
+                    String roleName = role.getName();
+
                     if (roleName != null && !roleName.startsWith("ROLE_")) {
                         roleName = "ROLE_" + roleName;
                     }
@@ -43,6 +45,6 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.getActive();
+        return Boolean.TRUE.equals(user.getActive()) && !Boolean.TRUE.equals(user.getDeleted());
     }
 }

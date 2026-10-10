@@ -2,6 +2,7 @@ package com.example.userauthservice.entity;
 
 import com.example.sharedkernel.entity.BaseAuditEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.Set;
 @Entity
 @Table(name = "roles")
 public class Role extends BaseAuditEntity {
+    @Column(nullable = false, unique = true)
     private String name;
     private String description;
     private Boolean defaultRole;

@@ -2,7 +2,11 @@ package com.example.sharedkernel.config.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
+import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
@@ -30,9 +34,18 @@ public class JwtUtils {
     @Value("${app.jwt.refresh-expiration-ms}")
     private String jwtRefreshExpirationMs;
 
-    public SecretKey getSecretKey() {
-        byte[] key = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(key);
+    @Getter
+    private SecretKey secretKey;
+
+    @PostConstruct
+    void initializeSecretKey() {
+        try {
+            byte[] key = Decoders.BASE64.decode(jwtSecret);
+            secretKey = Keys.hmacShaKeyFor(key);
+        } catch (DecodingException | WeakKeyException | IllegalArgumentException e) {
+            throw new IllegalStateException(
+                    "app.jwt.secret (JWT_SECRET) must be a Base64-encoded key of at least 32 bytes", e);
+        }
     }
 
     public String generateToken(UserDetails userDetails) {
@@ -41,17 +54,18 @@ public class JwtUtils {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
         claims.put("roles", roles);
+        claims.put("token_use", "access");
         return buildToken(claims, userDetails.getUsername(), jwtExpirationMs);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(new HashMap<>(), userDetails.getUsername(), jwtRefreshExpirationMs);
+        return buildToken(Map.of("token_use", "refresh"), userDetails.getUsername(), jwtRefreshExpirationMs);
     }
 
     private String buildToken(Map<String, Object> claims, String username, String jwtExpirationMs) {
         long now = System.currentTimeMillis();
         return Jwts.builder()
-                .claim("roles", claims.get("roles"))
+                .claims(claims)
                 .subject(username)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + Long.parseLong(jwtExpirationMs)))
@@ -92,7 +106,7 @@ public class JwtUtils {
                     .parseSignedClaims(token)
                     .getPayload();
             return true;
-        }  catch (SecurityException e) {
+        } catch (SecurityException e) {
             log.error("Invalid JWT signature: {}", e.getMessage());
         } catch (MalformedJwtException e) {
             log.error("Invalid JWT format: {}", e.getMessage());
@@ -107,7 +121,11 @@ public class JwtUtils {
     }
 
     public boolean isTokenValid(String jwt, UserDetails userDetails) {
-        var username = extractUsername(jwt);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(jwt));
+        Claims claims = extractAllClaims(jwt);
+        return "access".equals(claims.get("token_use", String.class))
+                && userDetails.getUsername().equals(claims.getSubject())
+                && userDetails.isEnabled() && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired() && userDetails.isCredentialsNonExpired()
+                && !claims.getExpiration().before(new Date());
     }
 }
