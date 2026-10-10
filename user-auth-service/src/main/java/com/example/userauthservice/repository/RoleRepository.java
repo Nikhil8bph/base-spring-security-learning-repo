@@ -9,7 +9,11 @@ import java.util.Set;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
-    Set<Role> findByDefaultRoleTrue();
+    Set<Role> findByDefaultRoleTrueAndDeletedFalseAndActiveTrue();
+
+    Set<Role> findByDeletedFalseAndActiveTrue();
+
+    boolean existsByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
